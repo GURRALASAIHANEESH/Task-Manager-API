@@ -1,0 +1,66 @@
+{
+    "name": "taskmanager-api",
+    "version": "1.0.0",
+    "description": "Production-grade REST API with JWT auth, RBAC, and task management",
+    "main": "app.js",
+    "engines": {
+        "node": ">=18.0.0",
+        "npm": ">=9.0.0"
+    },
+    "scripts": {
+        "start": "node app.js",
+        "dev": "nodemon app.js",
+        "lint": "eslint src/**/*.js app.js",
+        "lint:fix": "eslint src/**/*.js app.js --fix",
+        "db:migrate": "prisma migrate dev",
+        "db:migrate:prod": "prisma migrate deploy",
+        "db:generate": "prisma generate",
+        "db:studio": "prisma studio",
+        "db:reset": "prisma migrate reset --force",
+        "db:seed": "node prisma/seed.js",
+        "postinstall": "prisma generate"
+    },
+    "dependencies": {
+        "@prisma/client": "^5.14.0",
+        "bcrypt": "^5.1.1",
+        "compression": "^1.7.4",
+        "cookie-parser": "^1.4.6",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.5",
+        "express": "^4.19.2",
+        "express-rate-limit": "^7.3.1",
+        "helmet": "^7.1.0",
+        "joi": "^17.13.1",
+        "jsonwebtoken": "^9.0.2",
+        "morgan": "^1.10.0",
+        "winston": "^3.13.0"
+    },
+    "devDependencies": {
+        "eslint": "^8.57.0",
+        "nodemon": "^3.1.4",
+        "prisma": "^5.14.0"
+    },
+    "nodemonConfig": {
+        "watch": [
+            "src",
+            "app.js"
+        ],
+        "ext": "js,json",
+        "ignore": [
+            "logs/*",
+            "node_modules/*"
+        ],
+        "delay": 500
+    },
+    "keywords": [
+        "nodejs",
+        "express",
+        "jwt",
+        "rbac",
+        "prisma",
+        "postgresql",
+        "rest-api"
+    ],
+    "author": "Gurrala Sai Haneesh",
+    "license": "MIT"
+}
