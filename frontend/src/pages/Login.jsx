@@ -1,4 +1,4 @@
-// ===== frontend/src/pages/Login.jsx =====
+
 
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -13,11 +13,6 @@ const Login = () => {
     const [apiError, setApiError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // ─────────────────────────────────────────
-    // Client-side validation
-    // Basic checks before hitting the API to give
-    // instant feedback without a network round-trip.
-    // ─────────────────────────────────────────
     const validate = () => {
         const newErrors = {};
 
@@ -169,11 +164,6 @@ const Login = () => {
     );
 };
 
-// ─────────────────────────────────────────────
-// Inline styles
-// Kept inline for zero-dependency simplicity.
-// Replace with Tailwind / CSS modules in production.
-// ─────────────────────────────────────────────
 const styles = {
     container: {
         minHeight: '100vh',

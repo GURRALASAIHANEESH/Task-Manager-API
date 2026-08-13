@@ -1,14 +1,6 @@
-// ===== backend/src/utils/jwt.utils.js =====
-
 const jwt = require('jsonwebtoken');
 const AppError = require('./AppError');
 
-// ─────────────────────────────────────────────
-// generateAccessToken
-// Signs a short-lived access token (default 15m).
-// Payload is intentionally minimal — avoid storing
-// sensitive data in JWT (it is base64, not encrypted).
-// ─────────────────────────────────────────────
 const generateAccessToken = (payload) => {
     if (!process.env.JWT_SECRET) {
         throw new Error('JWT_SECRET is not defined in environment variables');
@@ -21,12 +13,6 @@ const generateAccessToken = (payload) => {
     });
 };
 
-// ─────────────────────────────────────────────
-// generateRefreshToken
-// Signs a long-lived refresh token (default 7d).
-// Should be stored in an httpOnly cookie — never
-// in localStorage.
-// ─────────────────────────────────────────────
 const generateRefreshToken = (payload) => {
     if (!process.env.JWT_REFRESH_SECRET) {
         throw new Error('JWT_REFRESH_SECRET is not defined in environment variables');
@@ -39,12 +25,6 @@ const generateRefreshToken = (payload) => {
     });
 };
 
-// ─────────────────────────────────────────────
-// verifyAccessToken
-// Verifies and decodes the access token.
-// Throws AppError on invalid/expired tokens so the
-// error middleware can handle them uniformly.
-// ─────────────────────────────────────────────
 const verifyAccessToken = (token) => {
     try {
         return jwt.verify(token, process.env.JWT_SECRET, {
@@ -65,9 +45,7 @@ const verifyAccessToken = (token) => {
     }
 };
 
-// ─────────────────────────────────────────────
-// verifyRefreshToken
-// ─────────────────────────────────────────────
+
 const verifyRefreshToken = (token) => {
     try {
         return jwt.verify(token, process.env.JWT_REFRESH_SECRET, {
@@ -82,10 +60,7 @@ const verifyRefreshToken = (token) => {
     }
 };
 
-// ─────────────────────────────────────────────
-// decodeToken (no verification — for debug only)
-// Never use this for authorization decisions.
-// ─────────────────────────────────────────────
+
 const decodeToken = (token) => jwt.decode(token);
 
 module.exports = {

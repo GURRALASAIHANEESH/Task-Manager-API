@@ -1,12 +1,7 @@
-// ===== backend/src/config/logger.js =====
-
 const { createLogger, format, transports } = require('winston');
 const path = require('path');
 const fs = require('fs');
 
-// ─────────────────────────────────────────────
-// Ensure logs directory exists at startup
-// ─────────────────────────────────────────────
 const logDir = path.resolve(process.cwd(), process.env.LOG_FILE_PATH
     ? path.dirname(process.env.LOG_FILE_PATH)
     : 'logs');
@@ -15,9 +10,6 @@ if (!fs.existsSync(logDir)) {
     fs.mkdirSync(logDir, { recursive: true });
 }
 
-// ─────────────────────────────────────────────
-// Custom log format for console (human-readable)
-// ─────────────────────────────────────────────
 const consoleFormat = format.combine(
     format.colorize({ all: true }),
     format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
@@ -27,19 +19,12 @@ const consoleFormat = format.combine(
     })
 );
 
-// ─────────────────────────────────────────────
-// JSON format for file logs (machine-readable,
-// compatible with Datadog / CloudWatch / ELK stack)
-// ─────────────────────────────────────────────
 const fileFormat = format.combine(
     format.timestamp(),
     format.errors({ stack: true }), // Include stack traces in file logs
     format.json()
 );
 
-// ─────────────────────────────────────────────
-// Logger instance
-// ─────────────────────────────────────────────
 const logger = createLogger({
     level: process.env.LOG_LEVEL || 'info',
     defaultMeta: {
@@ -47,22 +32,19 @@ const logger = createLogger({
         environment: process.env.NODE_ENV || 'development',
     },
     transports: [
-        // ── Console transport (all environments) ──
         new transports.Console({
             format: consoleFormat,
-            silent: process.env.NODE_ENV === 'test', // Silence during tests
+            silent: process.env.NODE_ENV === 'test',
         }),
 
-        // ── Combined log file ──────────────────────
         new transports.File({
             filename: path.resolve(process.cwd(), process.env.LOG_FILE_PATH || 'logs/app.log'),
             format: fileFormat,
-            maxsize: 10 * 1024 * 1024, // 10MB per file
-            maxFiles: 5,               // Keep last 5 rotated files
+            maxsize: 10 * 1024 * 1024,
+            maxFiles: 5,
             tailable: true,
         }),
 
-        // ── Error-only log file ────────────────────
         new transports.File({
             filename: path.resolve(logDir, 'error.log'),
             level: 'error',
@@ -73,7 +55,7 @@ const logger = createLogger({
         }),
     ],
 
-    // ── Uncaught exception / rejection handlers ─
+
     exceptionHandlers: [
         new transports.File({
             filename: path.resolve(logDir, 'exceptions.log'),

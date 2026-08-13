@@ -1,14 +1,7 @@
-// ===== backend/src/services/taskService.js =====
-
 const { prisma } = require('../config/database');
 const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
 
-// ─────────────────────────────────────────────
-// createTask
-//
-// Creates a new task assigned to the requesting user.
-// ─────────────────────────────────────────────
 const createTask = async (userId, { title, description, status }) => {
     const task = await prisma.task.create({
         data: {
@@ -36,33 +29,15 @@ const createTask = async (userId, { title, description, status }) => {
     return task;
 };
 
-// ─────────────────────────────────────────────
-// getAllTasks
-//
-// Returns a paginated, filterable, sortable list of tasks.
-//
-// Role behavior:
-//   USER  -> sees only their own tasks (userId filter enforced)
-//   ADMIN -> sees all tasks across all users
-//
-// Supports:
-//   - status filter
-//   - title/description search (case-insensitive)
-//   - pagination (page + limit)
-//   - sorting (sortBy + sortOrder)
-// ─────────────────────────────────────────────
 const getAllTasks = async (requestingUser, { status, page, limit, sortBy, sortOrder, search }) => {
     const isAdmin = requestingUser.role === 'ADMIN';
 
-    // Build dynamic where clause
     const where = {
-        // Non-admins are always scoped to their own tasks
         ...(!isAdmin && { userId: requestingUser.id }),
 
         // Status filter (optional)
         ...(status && { status }),
 
-        // Full-text search on title or description
         ...(search && {
             OR: [
                 { title: { contains: search, mode: 'insensitive' } },
@@ -73,7 +48,6 @@ const getAllTasks = async (requestingUser, { status, page, limit, sortBy, sortOr
 
     const skip = (page - 1) * limit;
 
-    // Run count and data fetch in parallel for performance
     const [total, tasks] = await Promise.all([
         prisma.task.count({ where }),
         prisma.task.findMany({
@@ -144,16 +118,6 @@ const getTaskById = async (taskId) => {
     return task;
 };
 
-// ─────────────────────────────────────────────
-// updateTask
-//
-// Partially updates a task.
-// Only fields present in the payload are updated
-// (Prisma ignores undefined fields automatically).
-//
-// Ownership must be verified before calling this
-// service (handled by authorizeOwnerOrAdmin middleware).
-// ─────────────────────────────────────────────
 const updateTask = async (taskId, { title, description, status }) => {
     // Build update payload — only include defined fields
     const updateData = {
@@ -184,13 +148,6 @@ const updateTask = async (taskId, { title, description, status }) => {
     return updatedTask;
 };
 
-// ─────────────────────────────────────────────
-// deleteTask
-//
-// Hard deletes a task by ID.
-// Ownership must be verified before calling this
-// service (handled by authorizeOwnerOrAdmin middleware).
-// ─────────────────────────────────────────────
 const deleteTask = async (taskId) => {
     await prisma.task.delete({
         where: { id: taskId },
@@ -199,12 +156,6 @@ const deleteTask = async (taskId) => {
     logger.info(`Task deleted: [${taskId}]`);
 };
 
-// ─────────────────────────────────────────────
-// getTaskStats (Admin only)
-//
-// Returns aggregate statistics across all tasks.
-// Useful for admin dashboard metrics.
-// ─────────────────────────────────────────────
 const getTaskStats = async () => {
     const [total, byStatus, recentTasks] = await Promise.all([
         prisma.task.count(),

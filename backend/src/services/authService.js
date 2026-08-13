@@ -1,25 +1,10 @@
-// ===== backend/src/services/authService.js =====
-
 const bcrypt = require('bcrypt');
 const { prisma } = require('../config/database');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../utils/jwt.utils');
 const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
 
-// ─────────────────────────────────────────────
-// register
-//
-// Creates a new user account.
-// Flow:
-//   1. Check email uniqueness
-//   2. Hash password with bcrypt
-//   3. Create user record
-//   4. Return sanitized user + tokens
-// ─────────────────────────────────────────────
 const register = async ({ email, password }) => {
-    // 1. Check if email already exists
-    // We do this explicitly rather than relying solely on the
-    // DB unique constraint so we can return a clean 409 error.
     const existingUser = await prisma.user.findUnique({
         where: { email },
     });
@@ -31,29 +16,26 @@ const register = async ({ email, password }) => {
         );
     }
 
-    // 2. Hash password
-    // saltRounds from env — defaults to 12 (production standard).
-    // Each increment doubles the compute time.
+    // Hash password
     const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // 3. Create user in DB
+    // Create user in DB
     const user = await prisma.user.create({
         data: {
             email,
             password: hashedPassword,
-            role: 'USER', // Role is always USER on self-registration
+            role: 'USER',
         },
         select: {
             id: true,
             email: true,
             role: true,
-            createdAt: true,
             // password deliberately excluded
         },
     });
 
-    // 4. Generate tokens
+    // Generate tokens
     const tokenPayload = { id: user.id, email: user.email, role: user.role };
     const accessToken = generateAccessToken(tokenPayload);
     const refreshToken = generateRefreshToken(tokenPayload);
@@ -67,35 +49,19 @@ const register = async ({ email, password }) => {
     };
 };
 
-// ─────────────────────────────────────────────
-// login
-//
-// Authenticates a user with email + password.
-// Flow:
-//   1. Find user by email
-//   2. Compare password against bcrypt hash
-//   3. Return tokens on success
-//
-// Security note: We use a GENERIC error message for both
-// "user not found" and "wrong password" cases to prevent
-// user enumeration attacks.
-// ─────────────────────────────────────────────
 const login = async ({ email, password }) => {
-    // 1. Find user — include password for comparison
     const user = await prisma.user.findUnique({
         where: { email },
         select: {
             id: true,
             email: true,
-            password: true, // Needed for bcrypt.compare only
+            password: true,
             role: true,
             createdAt: true,
         },
     });
 
-    // 2. Validate credentials
-    // Always run bcrypt.compare even if user is null to prevent
-    // timing attacks that could reveal whether an email exists.
+    // Validate credentials (timing attack prevention: always run bcrypt.compare)
     const dummyHash = '$2b$12$invalidhashfortimingnormalizationxxxxxxxxxxxxxxxxxxxxxxx';
     const isPasswordValid = user
         ? await bcrypt.compare(password, user.password)
@@ -108,12 +74,11 @@ const login = async ({ email, password }) => {
         );
     }
 
-    // 3. Generate tokens
+    // Generate tokens
     const tokenPayload = { id: user.id, email: user.email, role: user.role };
     const accessToken = generateAccessToken(tokenPayload);
     const refreshToken = generateRefreshToken(tokenPayload);
 
-    // Strip password before returning
     const { password: _removed, ...safeUser } = user;
 
     logger.info(`User logged in: ${user.email} [${user.id}]`);
@@ -125,19 +90,9 @@ const login = async ({ email, password }) => {
     };
 };
 
-// ─────────────────────────────────────────────
-// refreshAccessToken
-//
-// Issues a new access token using a valid refresh token.
-// In a full implementation, refresh tokens should be
-// stored in DB/Redis to support token rotation and
-// revocation. See SCALABILITY.md for details.
-// ─────────────────────────────────────────────
 const refreshAccessToken = async ({ refreshToken }) => {
-    // Verify the refresh token — throws AppError on failure
     const decoded = verifyRefreshToken(refreshToken);
 
-    // Confirm user still exists
     const user = await prisma.user.findUnique({
         where: { id: decoded.id },
         select: { id: true, email: true, role: true },
@@ -150,7 +105,7 @@ const refreshAccessToken = async ({ refreshToken }) => {
         );
     }
 
-    // Issue new access token
+    // Generate new access token
     const accessToken = generateAccessToken({
         id: user.id,
         email: user.email,
@@ -162,13 +117,7 @@ const refreshAccessToken = async ({ refreshToken }) => {
     return { accessToken };
 };
 
-// ─────────────────────────────────────────────
-// changePassword
-//
-// Allows an authenticated user to update their password.
-// ─────────────────────────────────────────────
 const changePassword = async (userId, { currentPassword, newPassword }) => {
-    // Fetch user with password
     const user = await prisma.user.findUnique({
         where: { id: userId },
     });
@@ -177,7 +126,6 @@ const changePassword = async (userId, { currentPassword, newPassword }) => {
         throw AppError.notFound('User not found.', 'USER_NOT_FOUND');
     }
 
-    // Verify current password
     const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
 
     if (!isCurrentPasswordValid) {
@@ -187,7 +135,7 @@ const changePassword = async (userId, { currentPassword, newPassword }) => {
         );
     }
 
-    // Prevent reuse of same password
+    // Prevent reusing current password
     const isSamePassword = await bcrypt.compare(newPassword, user.password);
     if (isSamePassword) {
         throw AppError.badRequest(
@@ -196,7 +144,7 @@ const changePassword = async (userId, { currentPassword, newPassword }) => {
         );
     }
 
-    // Hash and save new password
+    // Hash and update password
     const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 12;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
@@ -208,11 +156,6 @@ const changePassword = async (userId, { currentPassword, newPassword }) => {
     logger.info(`Password changed for user: ${user.email}`);
 };
 
-// ─────────────────────────────────────────────
-// getProfile
-//
-// Returns the authenticated user's profile data.
-// ─────────────────────────────────────────────
 const getProfile = async (userId) => {
     const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -223,7 +166,7 @@ const getProfile = async (userId) => {
             createdAt: true,
             updatedAt: true,
             _count: {
-                select: { tasks: true }, // Include task count as useful profile metadata
+                select: { tasks: true },
             },
         },
     });

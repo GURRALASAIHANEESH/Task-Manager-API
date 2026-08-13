@@ -1,5 +1,3 @@
-// ===== backend/app.js =====
-
 'use strict';
 
 require('dotenv').config();
@@ -17,10 +15,6 @@ const { connectDB } = require('./src/config/database');
 const routes = require('./src/routes/index');
 const { globalErrorHandler, notFoundHandler } = require('./src/middleware/error.middleware');
 
-// ─────────────────────────────────────────────
-// Validate critical environment variables
-// Fail fast at startup rather than at runtime.
-// ─────────────────────────────────────────────
 const REQUIRED_ENV_VARS = [
     'DATABASE_URL',
     'JWT_SECRET',
@@ -34,41 +28,18 @@ if (missingEnvVars.length > 0) {
     process.exit(1);
 }
 
-// ─────────────────────────────────────────────
-// App initialization
-// ─────────────────────────────────────────────
 const app = express();
 const PORT = parseInt(process.env.PORT, 10) || 5000;
 const API_VERSION = process.env.API_VERSION || 'v1';
 
-// ─────────────────────────────────────────────
-// Trust proxy
-// Required when running behind a reverse proxy
-// (Nginx, AWS ALB, etc.) so req.ip returns the
-// real client IP instead of the proxy IP.
-// ─────────────────────────────────────────────
 app.set('trust proxy', 1);
 
-// ─────────────────────────────────────────────
-// Security middleware
-// helmet sets secure HTTP headers:
-//   - X-Content-Type-Options: nosniff
-//   - X-Frame-Options: DENY
-//   - Strict-Transport-Security (HSTS)
-//   - Content-Security-Policy
-//   - X-XSS-Protection
-// ─────────────────────────────────────────────
 app.use(
     helmet({
         crossOriginResourcePolicy: { policy: 'cross-origin' },
     })
 );
 
-// ─────────────────────────────────────────────
-// CORS configuration
-// Reads allowed origins from env — supports
-// multiple origins (comma-separated).
-// ─────────────────────────────────────────────
 const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000')
     .split(',')
     .map((origin) => origin.trim());
@@ -86,19 +57,16 @@ app.use(
             logger.warn(`CORS blocked request from origin: ${origin}`);
             return callback(new Error(`Origin ${origin} is not allowed by CORS policy.`));
         },
-        credentials: true,         // Allow cookies (refresh token httpOnly cookie)
+        credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
         exposedHeaders: ['X-Total-Count'],
     })
 );
 
-// ─────────────────────────────────────────────
-// Request parsing
-// ─────────────────────────────────────────────
-app.use(express.json({ limit: '10kb' }));        // Limit body size — prevent large payload attacks
+app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
-app.use(cookieParser());                          // Parse httpOnly cookies for refresh token
+app.use(cookieParser());
 
 // ─────────────────────────────────────────────
 // Response compression
@@ -107,10 +75,6 @@ app.use(cookieParser());                          // Parse httpOnly cookies for 
 // ─────────────────────────────────────────────
 app.use(compression());
 
-// ─────────────────────────────────────────────
-// HTTP request logging via Morgan + Winston
-// Uses the stream defined in logger.js
-// ─────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {
     app.use(
         morgan(
@@ -120,11 +84,6 @@ if (process.env.NODE_ENV !== 'test') {
     );
 }
 
-// ─────────────────────────────────────────────
-// Global rate limiter
-// Applied to all /api routes.
-// Prevents brute-force and DDoS attacks.
-// ─────────────────────────────────────────────
 const globalLimiter = rateLimit({
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000,
     max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 100,
@@ -135,14 +94,9 @@ const globalLimiter = rateLimit({
         message: 'Too many requests from this IP. Please try again later.',
         errorCode: 'RATE_LIMIT_EXCEEDED',
     },
-    skip: (req) => process.env.NODE_ENV === 'test', // Skip during testing
+    skip: (req) => process.env.NODE_ENV === 'test',
 });
 
-// ─────────────────────────────────────────────
-// Stricter rate limiter for auth endpoints
-// Limits login/register attempts to prevent
-// brute-force credential attacks.
-// ─────────────────────────────────────────────
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,  // 15 minutes
     max: 20,                    // 20 attempts per window
@@ -156,16 +110,10 @@ const authLimiter = rateLimit({
     skip: (req) => process.env.NODE_ENV === 'test',
 });
 
-// ─────────────────────────────────────────────
-// Route mounting
-// ─────────────────────────────────────────────
 app.use(`/api/${API_VERSION}`, globalLimiter);
 app.use(`/api/${API_VERSION}/auth`, authLimiter);
 app.use(`/api/${API_VERSION}`, routes);
 
-// ─────────────────────────────────────────────
-// Root endpoint — API metadata
-// ─────────────────────────────────────────────
 app.get('/', (req, res) => {
     res.status(200).json({
         success: true,
@@ -176,20 +124,9 @@ app.get('/', (req, res) => {
     });
 });
 
-// ─────────────────────────────────────────────
-// 404 handler — must come after all routes
-// ─────────────────────────────────────────────
 app.use(notFoundHandler);
-
-// ─────────────────────────────────────────────
-// Global error handler — must be last middleware
-// 4-argument signature is required by Express
-// ─────────────────────────────────────────────
 app.use(globalErrorHandler);
 
-// ─────────────────────────────────────────────
-// Server startup
-// ─────────────────────────────────────────────
 const startServer = async () => {
     try {
         // Connect to DB before accepting traffic
@@ -200,12 +137,6 @@ const startServer = async () => {
             logger.info(`API base URL: http://localhost:${PORT}/api/${API_VERSION}`);
         });
 
-        // ── Graceful shutdown ──────────────────────
-        // On SIGTERM (Docker stop / K8s pod eviction):
-        //   1. Stop accepting new connections
-        //   2. Let in-flight requests complete (30s timeout)
-        //   3. Close DB connections
-        //   4. Exit
         const gracefulShutdown = (signal) => {
             logger.info(`${signal} received. Starting graceful shutdown...`);
 

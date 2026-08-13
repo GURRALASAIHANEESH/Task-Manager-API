@@ -1,27 +1,4 @@
-// ===== backend/src/utils/apiResponse.js =====
 
-// ─────────────────────────────────────────────
-// apiResponse — Standardized HTTP response helpers
-//
-// Enforces a consistent response envelope across all
-// endpoints so the frontend always gets a predictable shape:
-//
-// Success:
-// {
-//   "success": true,
-//   "message": "...",
-//   "data": { ... },
-//   "meta": { ... }      <- optional pagination/context
-// }
-//
-// Error (handled by error.middleware.js):
-// {
-//   "success": false,
-//   "message": "...",
-//   "errorCode": "...",
-//   "details": [ ... ]   <- optional validation field errors
-// }
-// ─────────────────────────────────────────────
 
 /**
  * Send a successful response
@@ -76,10 +53,6 @@ const sendError = (res, statusCode, message, errorCode = null, details = null) =
 
     return res.status(statusCode).json(response);
 };
-
-// ─────────────────────────────────────────────
-// Shorthand helpers for the most common responses
-// ─────────────────────────────────────────────
 
 const sendCreated = (res, message, data = null) =>
     sendSuccess(res, 201, message, data);

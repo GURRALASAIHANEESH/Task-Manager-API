@@ -1,18 +1,7 @@
-// ===== backend/src/validators/task.validator.js =====
-
 const Joi = require('joi');
 
-// ─────────────────────────────────────────────
-// Allowed task statuses — mirrors Prisma enum.
-// Defined here to keep validators self-contained
-// and avoid importing Prisma client into validators.
-// ─────────────────────────────────────────────
 const TASK_STATUSES = ['PENDING', 'IN_PROGRESS', 'COMPLETED'];
 
-// ─────────────────────────────────────────────
-// createTaskSchema
-// POST /api/v1/tasks
-// ─────────────────────────────────────────────
 const createTaskSchema = Joi.object({
     title: Joi.string()
         .min(3)
@@ -43,13 +32,6 @@ const createTaskSchema = Joi.object({
         }),
 });
 
-// ─────────────────────────────────────────────
-// updateTaskSchema
-// PUT /api/v1/tasks/:id
-//
-// All fields optional — supports partial updates.
-// At least one field must be provided.
-// ─────────────────────────────────────────────
 const updateTaskSchema = Joi.object({
     title: Joi.string()
         .min(3)

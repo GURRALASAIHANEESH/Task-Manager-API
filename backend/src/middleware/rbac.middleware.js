@@ -1,25 +1,8 @@
-// ===== backend/src/middleware/rbac.middleware.js =====
-
 const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
 
-// ─────────────────────────────────────────────
-// authorize
-//
-// Role-Based Access Control (RBAC) middleware factory.
-// Takes an array of allowed roles and returns a middleware
-// function that enforces the restriction.
-//
-// Usage in routes:
-//   router.get('/admin/users', authenticate, authorize('ADMIN'), handler)
-//   router.get('/tasks',       authenticate, authorize('USER', 'ADMIN'), handler)
-//
-// Must always be used AFTER authenticate middleware since
-// it depends on req.user being populated.
-// ─────────────────────────────────────────────
 const authorize = (...allowedRoles) => {
     return (req, res, next) => {
-        // Guard: authenticate must run first
         if (!req.user) {
             return next(
                 AppError.unauthorized(
@@ -53,27 +36,6 @@ const authorize = (...allowedRoles) => {
     };
 };
 
-// ─────────────────────────────────────────────
-// authorizeOwnerOrAdmin
-//
-// A specialized guard for resource ownership checks.
-// Passes if:
-//   - The requesting user is an ADMIN (can access anything), OR
-//   - The requesting user owns the resource (userId matches)
-//
-// Usage:
-//   router.delete('/tasks/:id', authenticate, authorizeOwnerOrAdmin, handler)
-//
-// The controller is responsible for setting req.resourceOwnerId
-// BEFORE this middleware runs — typically done by a prior
-// "fetch resource" step in the controller or a separate
-// resource loader middleware.
-//
-// Example in controller:
-//   const task = await taskService.getTaskById(id);
-//   req.resourceOwnerId = task.userId;
-//   next();
-// ─────────────────────────────────────────────
 const authorizeOwnerOrAdmin = (req, res, next) => {
     if (!req.user) {
         return next(AppError.unauthorized('Authentication required.', 'NOT_AUTHENTICATED'));

@@ -1,12 +1,4 @@
-// ===== backend/src/validators/auth.validator.js =====
-
 const Joi = require('joi');
-
-// ─────────────────────────────────────────────
-// Reusable field definitions
-// Centralizing these avoids duplication across
-// schemas and ensures consistent rules everywhere.
-// ─────────────────────────────────────────────
 
 const emailField = Joi.string()
     .email({ tlds: { allow: false } }) // Disable TLD validation — works in all environments
@@ -37,10 +29,6 @@ const passwordField = Joi.string()
         'string.empty': 'Password cannot be empty.',
     });
 
-// ─────────────────────────────────────────────
-// registerSchema
-// POST /api/v1/auth/register
-// ─────────────────────────────────────────────
 const registerSchema = Joi.object({
     email: emailField,
 
@@ -55,15 +43,10 @@ const registerSchema = Joi.object({
             'string.empty': 'Confirm password cannot be empty.',
         }),
 
-    // Role assignment via API is restricted —
-    // only ADMIN can promote users via a separate admin endpoint.
-    // This field is stripped by Joi's stripUnknown if included.
+    // Role assignment via API is restricted
+    // only ADMIN can promote users via separate endpoint
 });
 
-// ─────────────────────────────────────────────
-// loginSchema
-// POST /api/v1/auth/login
-// ─────────────────────────────────────────────
 const loginSchema = Joi.object({
     email: emailField,
 
@@ -73,15 +56,8 @@ const loginSchema = Joi.object({
             'any.required': 'Password is required.',
             'string.empty': 'Password cannot be empty.',
         }),
-    // Note: No complex rules on login password — we don't want
-    // to leak that a password is "wrong format" vs "wrong password".
-    // Always return a generic message on login failure.
 });
 
-// ─────────────────────────────────────────────
-// refreshTokenSchema
-// POST /api/v1/auth/refresh
-// ─────────────────────────────────────────────
 const refreshTokenSchema = Joi.object({
     refreshToken: Joi.string()
         .required()
@@ -91,10 +67,6 @@ const refreshTokenSchema = Joi.object({
         }),
 });
 
-// ─────────────────────────────────────────────
-// changePasswordSchema
-// POST /api/v1/auth/change-password
-// ─────────────────────────────────────────────
 const changePasswordSchema = Joi.object({
     currentPassword: Joi.string()
         .required()

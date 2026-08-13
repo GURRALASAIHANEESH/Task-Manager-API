@@ -1,5 +1,3 @@
-// ===== backend/src/routes/task.routes.js =====
-
 const express = require('express');
 const router = express.Router();
 
@@ -14,10 +12,6 @@ const {
     listTasksQuerySchema,
 } = require('../validators/task.validator');
 
-// ─────────────────────────────────────────────
-// All task routes require authentication.
-// Apply authenticate middleware globally to this router.
-// ─────────────────────────────────────────────
 router.use(authenticate);
 
 // ─────────────────────────────────────────────

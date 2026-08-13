@@ -1,15 +1,4 @@
-// ===== backend/src/utils/AppError.js =====
 
-// ─────────────────────────────────────────────
-// AppError — Custom operational error class
-//
-// Distinguishes between:
-//   - Operational errors (expected, safe to expose to client)
-//   - Programmer errors (unexpected bugs, never expose internals)
-//
-// All thrown AppError instances are caught by the centralized
-// error middleware in src/middleware/error.middleware.js
-// ─────────────────────────────────────────────
 
 class AppError extends Error {
     /**
@@ -26,19 +15,11 @@ class AppError extends Error {
         this.errorCode = errorCode;
         this.details = details;
 
-        // Mark as operational — this is an expected, handleable error
-        // Programmer errors (e.g. TypeError) will NOT have this flag
         this.isOperational = true;
 
-        // Capture stack trace, excluding the constructor call itself
         Error.captureStackTrace(this, this.constructor);
     }
 }
-
-// ─────────────────────────────────────────────
-// Factory helpers — keep controller code clean
-// and avoid repeating statusCode numbers inline
-// ─────────────────────────────────────────────
 
 AppError.badRequest = (message, errorCode = 'BAD_REQUEST', details = null) =>
     new AppError(message, 400, errorCode, details);

@@ -1,21 +1,6 @@
-// ===== backend/src/middleware/error.middleware.js =====
-
 const logger = require('../config/logger');
 const AppError = require('../utils/AppError');
 
-// ─────────────────────────────────────────────
-// handlePrismaError
-//
-// Maps Prisma-specific error codes to clean AppError
-// instances. Prevents Prisma internals from leaking
-// to the client.
-//
-// Common Prisma error codes:
-//   P2002 — Unique constraint violation
-//   P2025 — Record not found
-//   P2003 — Foreign key constraint violation
-//   P2014 — Relation violation
-// ─────────────────────────────────────────────
 const handlePrismaError = (error) => {
     switch (error.code) {
         case 'P2002': {
@@ -48,12 +33,6 @@ const handlePrismaError = (error) => {
     }
 };
 
-// ─────────────────────────────────────────────
-// handleJWTError
-//
-// Catches raw jsonwebtoken errors that may slip through
-// if verifyAccessToken is called outside the middleware.
-// ─────────────────────────────────────────────
 const handleJWTError = (error) => {
     if (error.name === 'TokenExpiredError') {
         return AppError.unauthorized('Access token has expired.', 'TOKEN_EXPIRED');
@@ -64,12 +43,6 @@ const handleJWTError = (error) => {
     return AppError.unauthorized('Token verification failed.', 'TOKEN_VERIFICATION_FAILED');
 };
 
-// ─────────────────────────────────────────────
-// sendErrorDev
-//
-// Development error response — includes full stack
-// trace and error details for easy debugging.
-// ─────────────────────────────────────────────
 const sendErrorDev = (err, res) => {
     res.status(err.statusCode).json({
         success: false,
@@ -82,16 +55,8 @@ const sendErrorDev = (err, res) => {
     });
 };
 
-// ─────────────────────────────────────────────
-// sendErrorProd
-//
-// Production error response — only exposes safe,
-// operational error information. Stack traces and
-// internal details are never sent to the client.
-// ─────────────────────────────────────────────
 const sendErrorProd = (err, res) => {
     if (err.isOperational) {
-        // Safe to expose — we threw this intentionally
         res.status(err.statusCode).json({
             success: false,
             message: err.message,
@@ -99,7 +64,6 @@ const sendErrorProd = (err, res) => {
             details: err.details || null,
         });
     } else {
-        // Programmer error or unknown — log it, send generic message
         logger.error('UNHANDLED ERROR:', {
             message: err.message,
             stack: err.stack,
@@ -113,24 +77,10 @@ const sendErrorProd = (err, res) => {
     }
 };
 
-// ─────────────────────────────────────────────
-// globalErrorHandler
-//
-// Express 4-argument error middleware.
-// Must be registered LAST in app.js after all routes.
-//
-// Handles:
-//   - AppError (operational)
-//   - Prisma errors (P20xx codes)
-//   - JWT errors (TokenExpiredError, JsonWebTokenError)
-//   - Unhandled programmer errors
-// ─────────────────────────────────────────────
 const globalErrorHandler = (err, req, res, next) => {
-    // Set defaults for unknown errors
     err.statusCode = err.statusCode || 500;
     err.status = err.status || 'error';
 
-    // Log all errors with context
     logger.error(`[${req.method}] ${req.originalUrl} - ${err.statusCode} - ${err.message}`, {
         userId: req.user?.id || 'unauthenticated',
         ip: req.ip,
@@ -138,7 +88,6 @@ const globalErrorHandler = (err, req, res, next) => {
         stack: err.stack,
     });
 
-    // Transform known third-party errors into AppError
     let error = err;
 
     if (err.code && err.code.startsWith('P2')) {
@@ -150,7 +99,6 @@ const globalErrorHandler = (err, req, res, next) => {
     ) {
         error = handleJWTError(err);
     } else if (err.type === 'entity.parse.failed') {
-        // Malformed JSON body
         error = AppError.badRequest('Invalid JSON in request body.', 'INVALID_JSON');
     } else if (err.code === 'EBADCSRFTOKEN') {
         error = AppError.forbidden('Invalid or missing CSRF token.', 'INVALID_CSRF');
@@ -164,12 +112,6 @@ const globalErrorHandler = (err, req, res, next) => {
     }
 };
 
-// ─────────────────────────────────────────────
-// notFoundHandler
-//
-// Catches any request that falls through all routes.
-// Register this AFTER all routes, BEFORE globalErrorHandler.
-// ─────────────────────────────────────────────
 const notFoundHandler = (req, res, next) => {
     next(
         AppError.notFound(
