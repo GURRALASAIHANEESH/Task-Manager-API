@@ -8,14 +8,6 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 
-// ─────────────────────────────────────────────
-// ProtectedRoute
-//
-// Renders children only when user is authenticated.
-// Shows a loading screen during the initial auth
-// check (silent refresh on app mount) to avoid
-// a flash-redirect to /login on page reload.
-// ─────────────────────────────────────────────
 const ProtectedRoute = ({ children }) => {
     const { isAuthenticated, isLoading } = useAuth();
 
@@ -31,12 +23,6 @@ const ProtectedRoute = ({ children }) => {
     return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
-// ─────────────────────────────────────────────
-// GuestRoute
-//
-// Redirects authenticated users away from
-// login/register pages to the dashboard.
-// ─────────────────────────────────────────────
 const GuestRoute = ({ children }) => {
     const { isAuthenticated, isLoading } = useAuth();
 
@@ -51,10 +37,6 @@ const GuestRoute = ({ children }) => {
     return !isAuthenticated ? children : <Navigate to="/dashboard" replace />;
 };
 
-// ─────────────────────────────────────────────
-// AppRoutes — defined inside AuthProvider so
-// ProtectedRoute and GuestRoute can access context
-// ─────────────────────────────────────────────
 const AppRoutes = () => (
     <Routes>
         {/* Default redirect */}
@@ -103,9 +85,6 @@ const AppRoutes = () => (
     </Routes>
 );
 
-// ─────────────────────────────────────────────
-// App root
-// ─────────────────────────────────────────────
 const App = () => (
     <BrowserRouter>
         <AuthProvider>
